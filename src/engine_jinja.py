@@ -6,7 +6,10 @@ import jinja2.sandbox
 
 def render_jinja(input_data: str) -> str:
     try:
-        return _render_jinja(input_data)
+        result = _render_jinja(input_data)
+        if isinstance(result, str):
+            return result
+        return f'{"ok": false, "error": "invalid result type"}'
     except Exception as e:
         return f'{"ok": false, "error": "{e.__class__.__name__}"}'
 
