@@ -1,0 +1,157 @@
+name: Test Example
+
+on:
+  push:
+
+jobs:
+  haskell-web-app:
+    name: Haskell Web App
+
+    strategy:
+      matrix:
+        python-version: ['3.10']
+        os: ['ubuntu-22.04']
+
+    env:
+      STACK_VERSION: 3.1.1
+      IMAGE_NAME: engine-jinja-example
+      DOCKER_META_CONTEXT: './example'
+      DOCKER_META_FILE: './example/Dockerfile'
+      DOCKER_META_PLATFORMS: 'linux/amd64'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: pip
+        cache-dependency-path: |
+          **/pyproject.toml
+          **/requirements*.txt
+
+    - name: Prepare ~/.local/bin
+      run: |
+        mkdir -p ~/.local/bin
+        export PATH=~/.local/bin:$PATH
+
+    - name: Cache ~/.stack
+      id: cache-stack
+      uses: actions/cache@v4
+      with:
+        path: ~/.stack
+        key: stack-home-ubuntu22-${{ hashFiles('**/package.yaml')}}-${{ hashFiles('**/stack.yaml*') }}
+        restore-keys: |
+          stack-home-ubuntu22-
+
+    - name: Cache haskell dir
+      id: cache-haskell
+      uses: actions/cache@v4
+      with:
+        path: haskell/.stack-work
+        key: haskell-dir-ubuntu22-${{ hashFiles('haskell/package.yaml')}}-${{ hashFiles('haskell/**/*.hs') }}
+        restore-keys: |
+          haskell-dir-ubuntu22-${{ hashFiles('haskell/package.yaml')}}-
+          haskell-dir-ubuntu22-
+
+    - name: Cache Stack in ~/.local/bin
+      id: cache-stack-local-bin
+      uses: actions/cache@v4
+      with:
+        path: ~/.local/bin
+        key: stack-local-bin-ubuntu22-3.1.1
+
+    - name: Setup stack
+      if: steps.cache-stack-local-bin.outputs.cache-hit != 'true'
+      run: |
+        curl -L https://github.com/commercialhaskell/stack/releases/download/v$STACK_VERSION/stack-$STACK_VERSION-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack';
+
+    - name: Install GHC and dependencies
+      run: |
+        cd example
+        stack build --no-terminal --install-ghc --only-dependencies
+
+    - name: Prepare Python env
+      run: |
+        python -m pip install -U pip setuptools wheel
+        mkdir dist
+
+    - name: Install dependencies
+      run: |
+        pip install -r ./requirements.txt
+        pip install Nuitka==2.7.12
+
+    - name: Build libraries
+      run: |
+        make libs
+
+    - name: Build Haskell app
+      run: |
+        cd example
+        make build
+
+    - name: Run tests
+      run: |
+        cd example
+        make test
+
+    - name: Make dist
+      run: |
+        cd example
+        make dist
+        ls -lahR dist
+
+    - name: Docker meta [test]
+      id: meta-test
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          local/${{ env.IMAGE_NAME }}
+        tags: |
+          type=sha
+
+    - name: Docker build [test]
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ env.DOCKER_META_CONTEXT }}
+        file: ${{ env.DOCKER_META_FILE }}
+        platforms: ${{ env.DOCKER_META_PLATFORMS }}
+        push: false
+        tags: ${{ steps.meta-test.outputs.tags }}
+        labels: ${{ steps.meta-test.outputs.labels }}
+
+    - name: Docker login [docker.io]
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+    - name: Docker meta [dev]
+      id: meta-dev
+      if: github.event_name != 'pull_request'
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+
+    - name: Docker build+push [dev]
+      uses: docker/build-push-action@v5
+      if: github.event_name != 'pull_request' && steps.meta-dev.outputs.tags != ''
+      with:
+        context: ${{ env.DOCKER_META_CONTEXT }}
+        file: ${{ env.DOCKER_META_FILE }}
+        platforms: ${{ env.DOCKER_META_PLATFORMS }}
+        push: true
+        tags: ${{ steps.meta-dev.outputs.tags }}
+        labels: ${{ steps.meta-dev.outputs.labels }}

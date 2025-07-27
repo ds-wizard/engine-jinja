@@ -1,0 +1,10 @@
+snapshot: lts-24.1
+
+packages:
+- .
+
+# Extra lib directory for the shared libraries:
+# - libjinja.so / libjinja.dylib with bindings to Python
+# - engine_jinja.*.so with Python wrapper around Jinja2
+extra-lib-dirs:
+- ./lib

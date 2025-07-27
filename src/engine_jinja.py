@@ -5,43 +5,86 @@ import jinja2.sandbox
 
 
 def render_jinja(input_data: str) -> str:
-    try:
-        result = _render_jinja(input_data)
-        if isinstance(result, str):
-            return result
-        return f'{"ok": false, "error": "invalid result type"}'
-    except Exception as e:
-        return f'{"ok": false, "error": "{e.__class__.__name__}"}'
-
-
-def _render_jinja(input_data: str) -> str:
+    # Load the input data
     try:
         data = json.loads(input_data)
-    except json.JSONDecodeError as e:
-        return json.dumps({
-            'error': f'Invalid JSON input: {e}',
-            'ok': False
-        })
+        contexts = data.get('contexts', [])
+        template_str = data.get('template', None)
+    except Exception as e:
+        return _out_error(
+            message=f'Invalid JSON input: {e}.',
+        )
+    if contexts == [] or contexts is None:
+        return _out_results([])
+    n_contexts = len(contexts)
+    if template_str is None:
+        return _out_error(
+            message='Input JSON data must contain "template" key.',
+            repeat=n_contexts,
+        )
 
-    # Check if data is a dictionary
-    if not isinstance(data, dict):
-        return json.dumps({
-            'error': 'Input data must be a JSON object (dictionary).',
-            'ok': False
-        })
+    # Prepare the Jinja environment
+    try:
+        j2_env = _prepare_jinja_env()
+    except Exception as e:
+        return _out_error(
+            message=f'Error preparing Jinja environment: {e}.',
+            repeat=n_contexts,
+        )
 
-    input_template = data.get('template', None)
-    input_context = data.get('context', None)
-    if input_template is None or input_context is None:
-        return json.dumps({
-            'error': 'Input JSON data must contain "template" and "context" keys.',
-            'ok': False
-        })
-    template_str = input_template or ''
-    context = input_context or {}
+    # Prepare the Jinja template
+    try:
+        j2_template = j2_env.from_string(template_str)
+    except Exception as e:
+        return _out_error(
+            message=f'Error preparing Jinja template: {e}.',
+            repeat=n_contexts,
+        )
 
-    # Create a Jinja2 environment (use sandbox for security)
-    env = jinja2.sandbox.SandboxedEnvironment(
+    # Render template with input data
+    results = []
+    for context in contexts:
+        try:
+            result = j2_template.render(**context)
+            results.append(_success(result=result))
+        except jinja2.TemplateError as e:
+            results.append(_error(message=f'Template rendering error: {e}'))
+        except Exception as e:
+            results.append(_error(message=f'An unexpected error occurred: {e}'))
+
+    # Dump results to JSON
+    return _out_results(results)
+
+
+def _error(message) -> dict:
+    return {
+        'result': '',
+        'ok': False,
+        'message': message,
+    }
+
+
+def _success(result, message=None) -> dict:
+    return {
+        'result': result,
+        'ok': True,
+        'message': message,
+    }
+
+
+def _out_error(message: str, repeat: int = 1) -> str:
+    results = []
+    for _ in range(repeat):
+        results.append(_error(message=message))
+    return json.dumps(results)
+
+
+def _out_results(results: list) -> str:
+    return json.dumps(results)
+
+
+def _prepare_jinja_env():
+    j2_env = jinja2.sandbox.SandboxedEnvironment(
         loader=jinja2.BaseLoader(),
         autoescape=jinja2.select_autoescape(['html', 'xml']),
         extensions=[
@@ -51,25 +94,4 @@ def _render_jinja(input_data: str) -> str:
     )
     # TODO: Add any additional filters or globals if needed
 
-    try:
-        # Create a template from the string
-        jinja_template = env.from_string(template_str)
-
-        # Render template with input data
-        result = jinja_template.render(**context)
-
-        # Done, exit gracefully
-        return json.dumps({
-            'result': result,
-            'ok': True
-        })
-    except jinja2.TemplateError as e:
-        return json.dumps({
-            'error': f'Template rendering error: {e}',
-            'ok': False
-        })
-    except Exception as e:
-        return json.dumps({
-            'error': f'Unexpected error: {e}',
-            'ok': False
-        })
+    return j2_env

@@ -1,0 +1,6 @@
+.stack-work/
+*~
+
+# Lib directory created from distribution of library
+# not version controlled as it is generated from the source code
+./lib

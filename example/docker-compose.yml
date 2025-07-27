@@ -1,0 +1,5 @@
+services:
+  example:
+    image: dswbot/engine-jinja-example
+    ports:
+      - "3000:3000"
