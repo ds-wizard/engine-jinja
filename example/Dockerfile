@@ -7,9 +7,8 @@ HEALTHCHECK --interval=5m --timeout=10s \
 
 # Install necessary libraries
 RUN apt-get update \
- && apt-get -qq -y install libmemcached-dev ca-certificates netbase curl libpq5 libpq-dev python3 python3-pip \
- && rm -rf /var/lib/apt/lists/* \
- && pip install jinja2
+ && apt-get -qq -y install libmemcached-dev ca-certificates netbase curl libpq5 libpq-dev python3-dev \
+ && rm -rf /var/lib/apt/lists/*
 
 # Set up env
 ENV LC_ALL=C.UTF-8 \

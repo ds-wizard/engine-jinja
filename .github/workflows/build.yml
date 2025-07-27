@@ -42,16 +42,16 @@ jobs:
 
     - name: Build library with Nuitka
       run: |
-        DIR_LIBS=$Python_ROOT_DIR/lib/python${{ matrix.python-version }}/site-packages
-        nuitka --module src/engine_jinja.py
+        make lib-python
+        ls -lah ./dist
 
     - name: Build wrapper library
       run: |
-        gcc -fPIC -shared -o libjinja.so src/wrapper.c -I$(python3-config --includes) -L$(python3-config --prefix)/lib -lpython${{ matrix.python-version }}
-        ls -lah
+        make lib-wrapper
+        ls -lah ./dist
 
     - name: Upload libraries
       uses: actions/upload-artifact@v4
       with:
         name: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}
-        path: './*.so'
+        path: './dist/*.so'

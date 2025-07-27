@@ -19,6 +19,8 @@ An example Haskell application that demonstrates how to use the `engine-jinja` l
 - `make clean` - This will clean up the build artifacts.
 - `Dockerfile` - This file is used to build a Docker image for the application, which includes all dependencies and the compiled binary (and relevant configuration of the runtime environment).
 
+**Do not use stack commands directly**; instead, use the provided `Makefile` commands to ensure that the build and test processes are consistent and correctly configured.
+
 ### Running the Application
 
 - `make run` - This will start the application, which listens for requests to render Jinja templates.

@@ -11,7 +11,8 @@ clean:
 .PHONY: lib-python
 lib-python:
 	mkdir -p dist
-	nuitka --module src/engine_jinja.py --output-dir=dist
+	nuitka --module src/engine_jinja.py --output-dir=dist \
+		   --include-package=jinja2 --include-package=markupsafe
 	rm -rf dist/engine_jinja.build dist/engine_jinja.pyi
 
 .PHONY: lib-wrapper

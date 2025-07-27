@@ -7,13 +7,14 @@ Jinja rendering engine for use in Wizard projects
 1. Install dependencies:
 
 ```sh
-pip install jinja2 nuitka
+pip install -r requirements.txt
+pip install nuitka
 ```
 
 2. Build the library from Python source:
 
 ```sh
-nuitka --module --output-dir=dist src/engine_jinja.py
+nuitka --module --include-package=jinja2 --include-package=markupsafe --output-dir=dist src/engine_jinja.py
 ```
 
 3. Build wrapper with C API for FFI:
@@ -35,3 +36,5 @@ To use the library, you need to:
 ## License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+
+We bundle [Jinja](https://github.com/pallets/jinja) and [MarkupSafe](https://github.com/pallets/markupsafe) dependencies as part of the resulting shared library for convenience. See [NOTICE](NOTICE.md) for more details on the licenses of these components.

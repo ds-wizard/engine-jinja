@@ -88,6 +88,7 @@ jobs:
     - name: Build libraries
       run: |
         make libs
+        ls -lah ./dist
 
     - name: Build Haskell app
       run: |
