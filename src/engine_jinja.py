@@ -92,6 +92,91 @@ def _prepare_jinja_env():
             'jinja2.ext.loopcontrols',
         ]
     )
-    # TODO: Add any additional filters or globals if needed
-
+    _add_filters(j2_env)
     return j2_env
+
+# ====================================================================================
+# Custom filters
+# ====================================================================================
+def _filter_endswith(value, suffix):
+    """Check if the value ends with the specified suffix."""
+    return str(value).endswith(suffix)
+
+def _filter_startswith(value, prefix):
+    """Check if the value starts with the specified prefix."""
+    return str(value).startswith(prefix)
+
+def _index_of(value, item):
+    """Get the index of the first occurrence of item in value."""
+    if isinstance(value, list):
+        try:
+            return value.index(item)
+        except ValueError:
+            return -1
+    return -1
+
+def _filter_intercalate(value, separator):
+    """Join a list of strings with the specified separator."""
+    if isinstance(value, list):
+        return separator.join(str(v) for v in value)
+    return str(value)
+
+def _filter_split(value, separator):
+    """Split a string by the specified separator."""
+    if isinstance(value, str):
+        return value.split(separator)
+    return []
+
+def _filter_of_alphabet(value):
+    """Convert a number to its corresponding letter in the alphabet (1 -> 'a', 2 -> 'b', ..., 28 -> 'aa')."""
+    if not isinstance(value, int) or value < 1:
+        return ''
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    result = ''
+    while value > 0:
+        value -= 1
+        result = alphabet[value % 26] + result
+        value //= 26
+    return result
+
+def _filter_roman(value):
+    """Convert an integer to a Roman numeral."""
+    if not isinstance(value, int) or value <= 0:
+        return ''
+    val = [
+        1000, 900, 500, 400,
+        100, 90, 50, 40,
+        10, 9, 5, 4,
+        1
+    ]
+    syms = [
+        "M", "CM", "D", "CD",
+        "C", "XC", "L", "XL",
+        "X", "IX", "V", "IV",
+        "I"
+    ]
+    roman_numeral = ''
+    for i in range(len(val)):
+        while value >= val[i]:
+            roman_numeral += syms[i]
+            value -= val[i]
+    return roman_numeral
+
+def _filter_any(value):
+    """Check if any element in the value is truthy."""
+    return any(value)
+
+def _filter_all(value):
+    """Check if all elements in the value are truthy."""
+    return all(value)
+
+def _add_filters(j2_env):
+    j2_env.filters['endswith'] = _filter_endswith
+    j2_env.filters['startswith'] = _filter_startswith
+    j2_env.filters['indexOf'] = _index_of
+    j2_env.filters['intercalate'] = _filter_intercalate
+    j2_env.filters['split'] = _filter_split
+    j2_env.filters['ofAlphabet'] = _filter_of_alphabet
+    j2_env.filters['roman'] = _filter_roman
+    j2_env.filters['any'] = _filter_any
+    j2_env.filters['all'] = _filter_all

@@ -21,6 +21,7 @@ dependencies:
 - bytestring
 - servant
 - servant-server
+- vector
 - wai
 - warp
 
