@@ -15,6 +15,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      OUT_NAME: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}
+
     steps:
     - name: Check out repository
       uses: actions/checkout@v4
@@ -43,22 +46,24 @@ jobs:
 
     - name: Build library with Nuitka
       run: |
-        DIR_LIBS=$Python_ROOT_DIR/lib/python${{ matrix.python-version }}/site-packages
-        nuitka --module src/engine_jinja.py
+        make lib-python
+        ls -lah ./dist
 
     - name: Build wrapper library
       run: |
-        gcc -fPIC -shared -o libjinja.so src/wrapper.c -I$(python3-config --includes) -L$(python3-config --prefix)/lib -lpython${{ matrix.python-version }}
-        ls -lah
+        make lib-wrapper
+        ls -lah ./dist
 
     - name: Prepare artifacts
       run: |
-        mkdir -p libjinja-python${{ matrix.python-version }}-${{ matrix.os }}
-        cp ./*.so libjinja-python${{ matrix.python-version }}-${{ matrix.os }}/
-        tar -czf libjinja-python${{ matrix.python-version }}-${{ matrix.os }}.tar.gz libjinja-python${{ matrix.python-version }}-${{ matrix.os }}
+        mkdir -p $OUT_NAME
+        cp dist/*.so $OUT_NAME/
+        ls -lah $OUT_NAME
+        tar -czvf $OUT_NAME.tar.gz $OUT_NAME
+        ls -lah $OUT_NAME.tar.gz
 
     - name: Upload release assets
       uses: shogo82148/actions-upload-release-asset@v1
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}.tar.gz
+        asset_path: ${{ env.OUT_NAME }}.tar.gz
