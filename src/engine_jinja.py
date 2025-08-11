@@ -9,7 +9,7 @@ def render_jinja(input_data: str) -> str:
     try:
         data = json.loads(input_data)
         contexts = data.get('contexts', [])
-        template_str = data.get('template', None)
+        templates = data.get('templates', [])
     except Exception as e:
         return _out_error(
             message=f'Invalid JSON input: {e}.',
@@ -17,11 +17,8 @@ def render_jinja(input_data: str) -> str:
     if contexts == [] or contexts is None:
         return _out_results([])
     n_contexts = len(contexts)
-    if template_str is None:
-        return _out_error(
-            message='Input JSON data must contain "template" key.',
-            repeat=n_contexts,
-        )
+    if templates == [] or templates is None:
+        return _out_results([])
 
     # Prepare the Jinja environment
     try:
@@ -33,24 +30,26 @@ def render_jinja(input_data: str) -> str:
         )
 
     # Prepare the Jinja template
-    try:
-        j2_template = j2_env.from_string(template_str)
-    except Exception as e:
-        return _out_error(
-            message=f'Error preparing Jinja template: {e}.',
-            repeat=n_contexts,
-        )
-
-    # Render template with input data
     results = []
-    for context in contexts:
+    for template_str in templates:
         try:
-            result = j2_template.render(**context)
-            results.append(_success(result=result))
-        except jinja2.TemplateError as e:
-            results.append(_error(message=f'Template rendering error: {e}'))
+            j2_template = j2_env.from_string(template_str)
         except Exception as e:
-            results.append(_error(message=f'An unexpected error occurred: {e}'))
+            for _ in range(n_contexts):
+                results.append(_error(
+                    message=f'Error preparing Jinja template: {e}.',
+                ))
+            continue
+
+        # Render template with input data
+        for context in contexts:
+            try:
+                result = j2_template.render(**context)
+                results.append(_success(result=result))
+            except jinja2.TemplateError as e:
+                results.append(_error(message=f'Template rendering error: {e}'))
+            except Exception as e:
+                results.append(_error(message=f'An unexpected error occurred: {e}'))
 
     # Dump results to JSON
     return _out_results(results)

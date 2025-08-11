@@ -84,6 +84,7 @@ test-suite engine-jinja-example-test
   main-is: Spec.hs
   other-modules:
       Test.Jinja.RenderBatch
+      Test.Jinja.RenderMultiple
       Test.Jinja.RenderSingle
       Paths_engine_jinja_example
   hs-source-dirs:

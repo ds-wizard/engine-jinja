@@ -1,10 +1,13 @@
-module Jinja (renderJinjaSingle, renderJinjaBatch) where
+module Jinja (renderJinjaBatch, renderJinjaMultiple, renderJinjaSingle) where
 
 import qualified Data.ByteString as BS
 import Data.Aeson
+import Data.Maybe (fromMaybe)
 import Foreign
 import Foreign.C.String
 import GHC.Generics
+
+import Debug.Trace (trace)
 
 -- FFI to dynamic rendering function
 foreign import ccall "render_jinja"
@@ -16,7 +19,7 @@ foreign import ccall "free_string"
 
 
 data JinjaInput = JinjaInput
-  { template :: String
+  { templates :: [String]
   , contexts :: [Value]
   } deriving (Generic, Show)
 
@@ -36,27 +39,39 @@ instance FromJSON JinjaResult
 
 renderJinjaSingle :: String -> Value -> IO (Either String String)
 renderJinjaSingle templateStr itemContext = do
-  let inputStructure = JinjaInput templateStr [itemContext]
+  let inputStructure = JinjaInput [templateStr] [itemContext]
   results <- renderJinja' inputStructure
   case results of
     Left err -> return $ Left err
     Right (r:_) -> return $ if r.ok
       then Right (r.result)
-      else Left $ maybe "Unknown rendering error" id (r.message)
+      else Left $ fromMaybe "Unknown rendering error" r.message
     _ -> return $ Left "No results returned from Jinja rendering"
 
-
-renderJinjaBatch :: String -> [Value] -> IO [Either String String]
-renderJinjaBatch templateStr itemContexts = do
-  let inputStructure = JinjaInput templateStr itemContexts
+renderJinjaMultiple :: [String] -> Value -> IO [Either String String]
+renderJinjaMultiple templateStrs itemContext = do
+  let inputStructure = JinjaInput templateStrs [itemContext]
   results <- renderJinja' inputStructure
   case results of
     Left err -> return [Left err]
     Right jinjaResults -> return $ map processResult jinjaResults
   where
     processResult r = if r.ok
-      then Right (r.result)
-      else Left $ "ERROR: " ++ maybe "Unknown rendering error" id (r.message)
+      then Right r.result
+      else Left $ fromMaybe "Unknown rendering error" r.message
+
+
+renderJinjaBatch :: String -> [Value] -> IO [Either String String]
+renderJinjaBatch templateStr itemContexts = do
+  let inputStructure = JinjaInput [templateStr] itemContexts
+  results <- renderJinja' inputStructure
+  case results of
+    Left err -> return [Left err]
+    Right jinjaResults -> return $ map processResult jinjaResults
+  where
+    processResult r = if r.ok
+      then Right r.result
+      else Left $ fromMaybe "Unknown rendering error" r.message
 
 
 renderJinja' :: JinjaInput -> IO (Either String [JinjaResult])
