@@ -11,12 +11,9 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-        os: ['ubuntu-22.04', 'ubuntu-24.04']
+        os: ['ubuntu-22.04', 'ubuntu-24.04', 'macos-15']
 
     runs-on: ${{ matrix.os }}
-
-    env:
-      OUT_NAME: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}
 
     steps:
     - name: Check out repository
@@ -57,13 +54,15 @@ jobs:
     - name: Prepare artifacts
       run: |
         mkdir -p $OUT_NAME
-        cp dist/*.so $OUT_NAME/
+        cp dist/* $OUT_NAME/
         ls -lah $OUT_NAME
         tar -czvf $OUT_NAME.tar.gz $OUT_NAME
         ls -lah $OUT_NAME.tar.gz
+      env:
+        OUT_NAME: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}-${{ runner.arch }}
 
     - name: Upload release assets
       uses: shogo82148/actions-upload-release-asset@v1
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ${{ env.OUT_NAME }}.tar.gz
+        asset_path: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}-${{ runner.arch }}.tar.gz

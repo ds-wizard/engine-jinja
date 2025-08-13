@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-        os: ['ubuntu-22.04', 'ubuntu-24.04']
+        os: ['ubuntu-22.04', 'ubuntu-24.04', 'macos-15']
 
     runs-on: ${{ matrix.os }}
 
@@ -53,5 +53,5 @@ jobs:
     - name: Upload libraries
       uses: actions/upload-artifact@v4
       with:
-        name: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}
-        path: './dist/*.so'
+        name: libjinja-python${{ matrix.python-version }}-${{ matrix.os }}-${{ runner.arch }}
+        path: './dist/*'
